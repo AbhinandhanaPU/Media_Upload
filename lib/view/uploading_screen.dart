@@ -1,10 +1,12 @@
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:media_upload/controller/uploader_controller.dart';
 import 'package:media_upload/view/widgets/custom_button.dart';
 
 class UploadScreen extends StatelessWidget {
-  const UploadScreen({super.key});
-
+  UploadScreen({super.key});
+  final UploaderController uploaderController = Get.put(UploaderController());
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,15 +52,21 @@ class UploadScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w400),
                     ),
                     const Spacer(),
-                    const Padding(
-                      padding: EdgeInsets.only(
+                    
+                    Padding(
+                      padding: const EdgeInsets.only(
                         bottom: 15,
                         top: 10,
                       ),
-                      child: CustomButton(
-                        width: 180,
-                        height: 80,
-                        text: 'Choose File',
+                      child: GestureDetector(
+                        onTap: () async {
+                          await uploaderController.pickFile(context);
+                        },
+                        child: const CustomButton(
+                          width: 180,
+                          height: 80,
+                          text: 'Choose File',
+                        ),
                       ),
                     ),
                   ],
