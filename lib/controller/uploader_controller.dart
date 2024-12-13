@@ -1,11 +1,16 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:developer';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart' as dio;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
+import 'package:media_upload/view/widgets/progress_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -13,8 +18,10 @@ class UploaderController extends GetxController {
   RxString fileName = "".obs;
   File? filee;
   Uuid uuid = const Uuid();
-  RxBool isLoading = RxBool(false);
   String downloadUrl = '';
+  final progressData = RxDouble(0.0);
+
+  dio.Dio dioClient = dio.Dio();
 
   final supabase = Supabase.instance.client;
 
@@ -84,9 +91,6 @@ class UploaderController extends GetxController {
         filee = File(filePath);
         fileName.value = result.files.single.name;
         log('File selected: ${fileName.value}');
-
-        // Uploading to Supabase
-        await uploadToSupabase();
       } else {
         log('No file selected', name: "UploaderController");
       }
@@ -96,40 +100,55 @@ class UploaderController extends GetxController {
     }
   }
 
-  Future<void> uploadToSupabase() async {
+  Future<void> uploadToSupabase(BuildContext context) async {
     try {
+      String supabaseUrl = Config.supabaseUrl;
+      String supabaseKey = Config.supabaseKey;
+
       if (!await _checkNetworkConnection()) return;
       log('Uploading.....');
 
-      isLoading.value = true;
+      progressData.value = 0.0;
+      progressBar(context: context, value: progressData.value);
 
       if (filee == null) {
         throw Exception('No file selected');
       }
+      // uploading documents
+      dio.FormData formData = dio.FormData.fromMap({
+        'file': await dio.MultipartFile.fromFile(
+          filee!.path,
+          filename: fileName.value,
+        ),
+      });
 
-      final storageResponse = await supabase.storage.from('documents').upload(
-            'files/${fileName.value}',
-            filee!,
-            fileOptions: const FileOptions(upsert: true),
-          );
+      String uploadUrl =
+          '$supabaseUrl/storage/v1/object/documents/files/${fileName.value}';
 
-      if (storageResponse.isEmpty) {
-        log('Failed to upload the file to Supabase Storage');
-        throw Exception('Failed to upload the file to Supabase Storage');
-      }
+      final response = await dioClient.post(
+        uploadUrl,
+        data: formData,
+        options: dio.Options(
+          headers: {'Authorization': 'Bearer $supabaseKey'},
+        ),
+        onSendProgress: (sent, total) {
+          if (total != -1) {
+            progressData.value = (sent / total) * 100;
+          }
+        },
+      );
+      log('Response: ${response.data}');
 
-      downloadUrl = supabase.storage
-          .from('documents')
-          .getPublicUrl('files/${fileName.value}');
-
+      // Download Url
+      String downloadUrl =
+          '$supabaseUrl/storage/v1/object/public/documents/files/${fileName.value}';
       if (downloadUrl.isEmpty) {
         throw Exception('Failed to retrieve the public URL');
       }
+      log('Download URL: $downloadUrl');
 
-      log('downloadUrl: $downloadUrl');
-
-      String uid = uuid.v1();
-
+      //  uploading details to database
+      String uid = const Uuid().v1();
       final dbResponse = await supabase.from('Documents').insert({
         'uid': uid,
         'fileName': fileName.value,
@@ -142,16 +161,24 @@ class UploaderController extends GetxController {
 
       filee = null;
       fileName.value = '';
+      progressData.value = 0;
+
+      progressBar(context: context, value: 100, isCompleted: true);
       showToast(msg: "Uploaded Successfully");
       log("Uploaded Successfully");
-      Get.back();
-
-      isLoading.value = false;
     } catch (e) {
-      log('Error uploading file: ${e.toString()}', name: "UploaderController");
-      showToast(msg: "Something Went Wrong");
-      isLoading.value = false;
-      showToast(msg: 'Failed to upload file ');
+      log('Error uploading file: ${e.toString()}');
+      showToast(msg: "Something Went Wrong. Failed to upload file.");
+
+      progressBar(
+        context: context,
+        value: progressData.value,
+        isCompleted: true,
+      );
+
+      if (e is dio.DioException) {
+        log('Dio error: ${e.response?.data}');
+      }
     }
   }
 }

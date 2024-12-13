@@ -5,7 +5,7 @@ import 'package:media_upload/view/uploading_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeSupabase();
+  await Config.initializeSupabase();
 
   runApp(const MyApp());
 }

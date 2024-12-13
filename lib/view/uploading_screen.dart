@@ -52,7 +52,6 @@ class UploadScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w400),
                     ),
                     const Spacer(),
-                    
                     Padding(
                       padding: const EdgeInsets.only(
                         bottom: 15,
@@ -60,7 +59,12 @@ class UploadScreen extends StatelessWidget {
                       ),
                       child: GestureDetector(
                         onTap: () async {
-                          await uploaderController.pickFile(context);
+                          await uploaderController
+                              .pickFile(context)
+                              .then((value) async {
+                            // Uploading to Supabase
+                            await uploaderController.uploadToSupabase(context);
+                          });
                         },
                         child: const CustomButton(
                           width: 180,
