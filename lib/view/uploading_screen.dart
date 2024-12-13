@@ -59,12 +59,7 @@ class UploadScreen extends StatelessWidget {
                       ),
                       child: GestureDetector(
                         onTap: () async {
-                          await uploaderController
-                              .pickFile(context)
-                              .then((value) async {
-                            // Uploading to Supabase
-                            await uploaderController.uploadToSupabase(context);
-                          });
+                          await uploaderController.pickFile(context);
                         },
                         child: const CustomButton(
                           width: 180,

@@ -8,6 +8,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:media_upload/controller/notification_service.dart';
 import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
 import 'package:media_upload/view/widgets/progress_bar.dart';
@@ -24,6 +25,7 @@ class UploaderController extends GetxController {
   dio.Dio dioClient = dio.Dio();
 
   final supabase = Supabase.instance.client;
+  final NotificationService _notificationService = NotificationService();
 
   Future<bool> _checkNetworkConnection() async {
     final connectivityResult = await Connectivity().checkConnectivity();
@@ -91,6 +93,9 @@ class UploaderController extends GetxController {
         filee = File(filePath);
         fileName.value = result.files.single.name;
         log('File selected: ${fileName.value}');
+
+        // Uploading to Supabase
+        await uploadToSupabase(context);
       } else {
         log('No file selected', name: "UploaderController");
       }
@@ -109,11 +114,20 @@ class UploaderController extends GetxController {
       log('Uploading.....');
 
       progressData.value = 0.0;
-      progressBar(context: context, value: progressData.value);
+      progressBar(
+        context: context,
+        value: progressData.value,
+      );
+      _notificationService.showProgressNotification(
+        progress: 0,
+        maxProgress: 100,
+        fileName: fileName.string,
+      );
 
       if (filee == null) {
         throw Exception('No file selected');
       }
+
       // uploading documents
       dio.FormData formData = dio.FormData.fromMap({
         'file': await dio.MultipartFile.fromFile(
@@ -164,17 +178,24 @@ class UploaderController extends GetxController {
       progressData.value = 0;
 
       progressBar(context: context, value: 100, isCompleted: true);
+      _notificationService.cancelNotification();
+
       showToast(msg: "Uploaded Successfully");
       log("Uploaded Successfully");
     } catch (e) {
       log('Error uploading file: ${e.toString()}');
       showToast(msg: "Something Went Wrong. Failed to upload file.");
 
+      filee = null;
+      fileName.value = '';
+      progressData.value = 0;
+
       progressBar(
         context: context,
         value: progressData.value,
         isCompleted: true,
       );
+      _notificationService.cancelNotification();
 
       if (e is dio.DioException) {
         log('Dio error: ${e.response?.data}');
