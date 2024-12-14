@@ -11,7 +11,6 @@ import 'package:get/get.dart';
 import 'package:media_upload/controller/notification_service.dart';
 import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
-import 'package:media_upload/view/widgets/progress_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -114,15 +113,6 @@ class UploaderController extends GetxController {
       log('Uploading.....');
 
       progressData.value = 0.0;
-      progressBar(
-        context: context,
-        value: progressData.value,
-      );
-      _notificationService.showProgressNotification(
-        progress: 0,
-        maxProgress: 100,
-        fileName: fileName.string,
-      );
 
       if (filee == null) {
         throw Exception('No file selected');
@@ -137,7 +127,7 @@ class UploaderController extends GetxController {
       });
 
       String uploadUrl =
-          '$supabaseUrl/storage/v1/object/documents/files/${fileName.value}';
+          '$supabaseUrl/storage/v1/s3/object/documents/files/${fileName.value}';
 
       final response = await dioClient.post(
         uploadUrl,
@@ -148,6 +138,11 @@ class UploaderController extends GetxController {
         onSendProgress: (sent, total) {
           if (total != -1) {
             progressData.value = (sent / total) * 100;
+            _notificationService.showProgressNotification(
+              progress: progressData.value.toInt(),
+              maxProgress: 100,
+              fileName: fileName.string,
+            );
           }
         },
       );
@@ -155,7 +150,7 @@ class UploaderController extends GetxController {
 
       // Download Url
       String downloadUrl =
-          '$supabaseUrl/storage/v1/object/public/documents/files/${fileName.value}';
+          '$supabaseUrl/storage/v1/s3/object/public/documents/files/${fileName.value}';
       if (downloadUrl.isEmpty) {
         throw Exception('Failed to retrieve the public URL');
       }
@@ -177,7 +172,6 @@ class UploaderController extends GetxController {
       fileName.value = '';
       progressData.value = 0;
 
-      progressBar(context: context, value: 100, isCompleted: true);
       _notificationService.cancelNotification();
 
       showToast(msg: "Uploaded Successfully");
@@ -189,12 +183,6 @@ class UploaderController extends GetxController {
       filee = null;
       fileName.value = '';
       progressData.value = 0;
-
-      progressBar(
-        context: context,
-        value: progressData.value,
-        isCompleted: true,
-      );
       _notificationService.cancelNotification();
 
       if (e is dio.DioException) {

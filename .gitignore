@@ -42,5 +42,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Ignore the firebase_options.dart file
+# Ignore the supabase_config.dart file
 lib/supabase_config.dart
