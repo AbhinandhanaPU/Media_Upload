@@ -3,12 +3,12 @@
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:media_upload/controller/notification_service.dart';
+import 'package:media_upload/controller/network_controller.dart';
+import 'package:media_upload/controller/notification_controller.dart';
 import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,21 +24,13 @@ class UploaderController extends GetxController {
   dio.Dio dioClient = dio.Dio();
 
   final supabase = Supabase.instance.client;
-  final NotificationService _notificationService = NotificationService();
+  final NotificationController _notificationCntlr = NotificationController();
+  final NetworkController _networkController = NetworkController();
 
-  Future<bool> _checkNetworkConnection() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      showToast(msg: 'No internet connection. Please try again later.');
-      log("No internet connection", name: "UploaderController");
-      return false;
-    }
-    return true;
-  }
-
+  // function to pick the document and videos
   Future<void> pickFile(BuildContext context) async {
     try {
-      if (!await _checkNetworkConnection()) return;
+      if (!await _networkController.checkNetworkConnection()) return;
 
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         allowedExtensions: [
@@ -104,12 +96,13 @@ class UploaderController extends GetxController {
     }
   }
 
+  // function to upload the data into subabase storage and database
   Future<void> uploadToSupabase(BuildContext context) async {
     try {
       String supabaseUrl = Config.supabaseUrl;
       String supabaseKey = Config.supabaseKey;
 
-      if (!await _checkNetworkConnection()) return;
+      if (!await _networkController.checkNetworkConnection()) return;
       log('Uploading.....');
 
       progressData.value = 0.0;
@@ -118,7 +111,7 @@ class UploaderController extends GetxController {
         throw Exception('No file selected');
       }
 
-      // uploading documents
+      // Uploading documents
       dio.FormData formData = dio.FormData.fromMap({
         'file': await dio.MultipartFile.fromFile(
           filee!.path,
@@ -127,7 +120,7 @@ class UploaderController extends GetxController {
       });
 
       String uploadUrl =
-          '$supabaseUrl/storage/v1/s3/object/documents/files/${fileName.value}';
+          '$supabaseUrl/storage/v1/object/documents/${fileName.value}';
 
       final response = await dioClient.post(
         uploadUrl,
@@ -138,7 +131,7 @@ class UploaderController extends GetxController {
         onSendProgress: (sent, total) {
           if (total != -1) {
             progressData.value = (sent / total) * 100;
-            _notificationService.showProgressNotification(
+            _notificationCntlr.showProgressNotification(
               progress: progressData.value.toInt(),
               maxProgress: 100,
               fileName: fileName.string,
@@ -146,48 +139,48 @@ class UploaderController extends GetxController {
           }
         },
       );
+
       log('Response: ${response.data}');
 
-      // Download Url
-      String downloadUrl =
-          '$supabaseUrl/storage/v1/s3/object/public/documents/files/${fileName.value}';
-      if (downloadUrl.isEmpty) {
-        throw Exception('Failed to retrieve the public URL');
+      if (response.statusCode == 200) {
+        // Download URL
+        String downloadUrl =
+            '$supabaseUrl/storage/v1/object/public/documents/${fileName.value}';
+        if (downloadUrl.isEmpty) {
+          throw Exception('Failed to retrieve the public URL');
+        }
+        log('Download URL: $downloadUrl');
+
+        String uid = response.data['Id'];
+
+        // Insert into database
+        await supabase.from('Documents').insert({
+          'uid': uid,
+          'fileName': fileName.value,
+          'url': downloadUrl,
+        });
+        filee = null;
+        fileName.value = '';
+        progressData.value = 0;
+        _notificationCntlr.cancelNotification();
+
+        showToast(msg: "Uploaded Successfully");
+        log("Uploaded Successfully");
+      } else {
+        throw Exception('Error uploading file: ${response.data}');
       }
-      log('Download URL: $downloadUrl');
-
-      //  uploading details to database
-      String uid = const Uuid().v1();
-      final dbResponse = await supabase.from('Documents').insert({
-        'uid': uid,
-        'fileName': fileName.value,
-        'url': downloadUrl,
-      });
-
-      if (dbResponse.error != null) {
-        throw Exception(dbResponse.error!.message);
-      }
-
-      filee = null;
-      fileName.value = '';
-      progressData.value = 0;
-
-      _notificationService.cancelNotification();
-
-      showToast(msg: "Uploaded Successfully");
-      log("Uploaded Successfully");
     } catch (e) {
+      if (e is dio.DioException) {
+        showToast(msg: " ${e.response?.data['message']} ");
+        log('Dio error: ${e.response?.data}');
+      }
       log('Error uploading file: ${e.toString()}');
       showToast(msg: "Something Went Wrong. Failed to upload file.");
 
       filee = null;
       fileName.value = '';
       progressData.value = 0;
-      _notificationService.cancelNotification();
-
-      if (e is dio.DioException) {
-        log('Dio error: ${e.response?.data}');
-      }
+      _notificationCntlr.cancelNotification();
     }
   }
 }
