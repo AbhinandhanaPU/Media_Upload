@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_upload/controller/uploader_controller.dart';
 import 'package:media_upload/view/uploading_screen/retry_uploads.dart';
+import 'package:media_upload/view/video_player.dart';
 import 'package:media_upload/view/widgets/custom_button.dart';
 import 'package:media_upload/view/widgets/progress_bar.dart';
 
@@ -42,19 +43,57 @@ class UploadScreen extends StatelessWidget {
                   child: Obx(() {
                     return uploaderController.fileName.value != ''
                         ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               Text(
                                 uploaderController.fileName.value,
                                 style: const TextStyle(
                                     fontSize: 18, fontWeight: FontWeight.w500),
                               ),
-                              const SizedBox(height: 10),
                               Text(
                                 'File Size : ${uploaderController.fileSize}',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w400),
                               ),
+                              if (uploaderController.isVideo.value)
+                                Column(
+                                  children: [
+                                    const SizedBox(height: 16),
+                                    Obx(() {
+                                      if (uploaderController
+                                              .videoThumbnail.value !=
+                                          null) {
+                                        return Image.file(
+                                          uploaderController
+                                              .videoThumbnail.value!,
+                                          height: 150,
+                                          width: 150,
+                                          fit: BoxFit.cover,
+                                        );
+                                      } else {
+                                        return const Text(
+                                            'No thumbnail available');
+                                      }
+                                    }),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.play_arrow),
+                                      label: const Text('Play Video'),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                VideoPlayerScreen(
+                                              videoPath: uploaderController
+                                                  .filee!.path,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ProgressBar(
                                 context: context,
                                 value: uploaderController.progressData.value,

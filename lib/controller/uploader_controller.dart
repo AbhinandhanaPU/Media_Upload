@@ -12,8 +12,10 @@ import 'package:media_upload/controller/notification_controller.dart';
 import 'package:media_upload/model/failed_uploads.dart';
 import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 class UploaderController extends GetxController {
   RxString fileName = "".obs;
@@ -22,6 +24,8 @@ class UploaderController extends GetxController {
   Uuid uuid = const Uuid();
   String downloadUrl = '';
   final progressData = RxDouble(0.0);
+  final isVideo = false.obs;
+  final videoThumbnail = Rxn<File>();
 
   dio.Dio dioClient = dio.Dio();
 
@@ -38,7 +42,6 @@ class UploaderController extends GetxController {
         allowedExtensions: [
           'mp4',
           'mov',
-          'avi',
           'pdf',
           'doc',
           'docx',
@@ -56,7 +59,6 @@ class UploaderController extends GetxController {
         final allowedExtensions = [
           'mp4',
           'mov',
-          'avi',
           'pdf',
           'doc',
           'docx',
@@ -71,22 +73,35 @@ class UploaderController extends GetxController {
           return;
         }
 
-        final filesize = result.files.single.size;
-        final fileSizeInMb = filesize / (1024 * 1024);
+        final int fileSizeInBytes = result.files.single.size;
+        final double fileSizeInMb = fileSizeInBytes / (1024 * 1024);
 
+        final String formattedSize = formatFileSize(fileSizeInBytes);
         if (fileSizeInMb > 100) {
           log('File size exceeds 100 MB', name: "UploaderController");
+
           showToast(
-            msg:
-                'The selected file exceeds the size limit of 100 MB. Please choose a smaller file.',
-          );
+              msg:
+                  'The selected file exceeds the size limit of 100 MB. Please choose a smaller file.');
           return;
         }
 
         filee = File(filePath);
         fileName.value = result.files.single.name;
-        fileSize.value = filesize.toString();
+        fileSize.value = formattedSize;
         log('File selected: ${fileName.value}');
+
+        final List<String> videoFormats = ['mp4', 'mov'];
+
+        isVideo.value = videoFormats
+            .any((format) => filee!.path.toLowerCase().endsWith('.$format'));
+
+        if (isVideo.value) {
+          final thumbnail = await generateVideoThumbnail(filee!.path);
+          if (thumbnail != null) {
+            videoThumbnail.value = thumbnail;
+          }
+        }
 
         // Uploading to Supabase
         await uploadToSupabase(context);
@@ -97,6 +112,24 @@ class UploaderController extends GetxController {
       log('Error picking file: ${e.toString()}', name: "UploaderController");
       showToast(msg: 'Failed to select file: ${e.toString()}');
     }
+  }
+
+  Future<File?> generateVideoThumbnail(String videoPath) async {
+    try {
+      final String? thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        thumbnailPath: (await getTemporaryDirectory()).path,
+        imageFormat: ImageFormat.JPEG,
+        maxHeight: 150,
+        quality: 75,
+      );
+      if (thumbnailPath != null) {
+        return File(thumbnailPath);
+      }
+    } catch (e) {
+      log("Error generating thumbnail: $e");
+    }
+    return null;
   }
 
   String supabaseUrl = Config.supabaseUrl;
@@ -211,5 +244,21 @@ class UploaderController extends GetxController {
       fileSize: fileSize,
       errorMessage: errorMessage,
     ));
+  }
+
+  String formatFileSize(int bytes) {
+    const int kb = 1024;
+    const int mb = kb * 1024;
+    const int gb = mb * 1024;
+
+    if (bytes >= gb) {
+      return '${(bytes / gb).toStringAsFixed(2)} GB';
+    } else if (bytes >= mb) {
+      return '${(bytes / mb).toStringAsFixed(2)} MB';
+    } else if (bytes >= kb) {
+      return '${(bytes / kb).toStringAsFixed(2)} KB';
+    } else {
+      return '$bytes Bytes';
+    }
   }
 }
