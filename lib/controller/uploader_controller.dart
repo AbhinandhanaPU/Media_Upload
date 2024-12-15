@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_upload/controller/network_controller.dart';
 import 'package:media_upload/controller/notification_controller.dart';
+import 'package:media_upload/model/failed_uploads.dart';
 import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,6 +17,7 @@ import 'package:uuid/uuid.dart';
 
 class UploaderController extends GetxController {
   RxString fileName = "".obs;
+  RxString fileSize = "".obs;
   File? filee;
   Uuid uuid = const Uuid();
   String downloadUrl = '';
@@ -69,10 +71,10 @@ class UploaderController extends GetxController {
           return;
         }
 
-        final fileSize = result.files.single.size;
-        final fileSizeInMB = fileSize / (1024 * 1024);
+        final filesize = result.files.single.size;
+        final fileSizeInMb = filesize / (1024 * 1024);
 
-        if (fileSizeInMB > 100) {
+        if (fileSizeInMb > 100) {
           log('File size exceeds 100 MB', name: "UploaderController");
           showToast(
             msg:
@@ -83,6 +85,7 @@ class UploaderController extends GetxController {
 
         filee = File(filePath);
         fileName.value = result.files.single.name;
+        fileSize.value = filesize.toString();
         log('File selected: ${fileName.value}');
 
         // Uploading to Supabase
@@ -96,12 +99,12 @@ class UploaderController extends GetxController {
     }
   }
 
+  String supabaseUrl = Config.supabaseUrl;
+  String supabaseKey = Config.supabaseKey;
+
   // function to upload the data into subabase storage and database
   Future<void> uploadToSupabase(BuildContext context) async {
     try {
-      String supabaseUrl = Config.supabaseUrl;
-      String supabaseKey = Config.supabaseKey;
-
       if (!await _networkController.checkNetworkConnection()) return;
       log('Uploading.....');
 
@@ -143,22 +146,6 @@ class UploaderController extends GetxController {
       log('Response: ${response.data}');
 
       if (response.statusCode == 200) {
-        // Download URL
-        String downloadUrl =
-            '$supabaseUrl/storage/v1/object/public/documents/${fileName.value}';
-        if (downloadUrl.isEmpty) {
-          throw Exception('Failed to retrieve the public URL');
-        }
-        log('Download URL: $downloadUrl');
-
-        String uid = response.data['Id'];
-
-        // Insert into database
-        await supabase.from('Documents').insert({
-          'uid': uid,
-          'fileName': fileName.value,
-          'url': downloadUrl,
-        });
         filee = null;
         fileName.value = '';
         progressData.value = 0;
@@ -175,12 +162,54 @@ class UploaderController extends GetxController {
         log('Dio error: ${e.response?.data}');
       }
       log('Error uploading file: ${e.toString()}');
-      showToast(msg: "Something Went Wrong. Failed to upload file.");
+      showToast(msg: "Try Again.");
+      addFailedUpload(
+          fileName.value, filee!.path, fileSize.value, e.toString());
 
       filee = null;
       fileName.value = '';
       progressData.value = 0;
       _notificationCntlr.cancelNotification();
     }
+  }
+
+  RxList<FailedUpload> failedUploads = <FailedUpload>[].obs;
+
+  Future<void> retryUpload(
+      FailedUpload failedFile, BuildContext context) async {
+    try {
+      failedFile.isVisible.value = false;
+      fileName.value = failedFile.fileName;
+      fileSize.value = failedFile.fileSize;
+      String filePath = failedFile.filePath;
+      filee = File(filePath);
+
+      // To upload
+      await uploadToSupabase(context);
+
+      // remove the item if file uploaded successfully
+      failedUploads.remove(failedFile);
+    } catch (e) {
+      if (e is dio.DioException) {
+        showToast(msg: " ${e.response?.data['message']} ");
+        log('Dio error: ${e.response?.data}');
+      }
+      log('Retry upload failed: ${e.toString()}');
+      showToast(msg: "Retry failed for file: ${failedFile.fileName}");
+
+      _notificationCntlr.cancelNotification();
+    } finally {
+      _notificationCntlr.cancelNotification();
+    }
+  }
+
+  void addFailedUpload(
+      String fileName, String filePath, String fileSize, String errorMessage) {
+    failedUploads.add(FailedUpload(
+      fileName: fileName,
+      filePath: filePath,
+      fileSize: fileSize,
+      errorMessage: errorMessage,
+    ));
   }
 }

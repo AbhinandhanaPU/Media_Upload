@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:media_upload/supabase_config.dart';
-import 'package:media_upload/view/uploading_screen.dart';
+import 'package:media_upload/view/uploading_screen/uploading_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
