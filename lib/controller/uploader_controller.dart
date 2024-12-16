@@ -14,14 +14,12 @@ import 'package:media_upload/supabase_config.dart';
 import 'package:media_upload/view/utils/utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 class UploaderController extends GetxController {
   RxString fileName = "".obs;
   RxString fileSize = "".obs;
   File? filee;
-  Uuid uuid = const Uuid();
   String downloadUrl = '';
   final progressData = RxDouble(0.0);
   final isVideo = false.obs;
