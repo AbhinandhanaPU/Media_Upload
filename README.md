@@ -16,7 +16,7 @@ This Flutter project allows users to upload large files (videos or documents) to
 - Persistent upload notifications are shown, even if the app runs in the background.  
 
 ### 3. Video Preview
-- Video files display a **thumbnail** or preview clip before full playback.  
+- Video files display a **thumbnail** before full playback.  
 - Includes a play button for video playback.  
 
 ### 4. Error Handling
@@ -28,7 +28,7 @@ Handles scenarios like:
 Retry option is available for failed uploads.  
 
 ### 5. Persistent Upload State
-- Upload state is retained, and uploads **resume automatically** if the app is closed or reopened.
+- Uploads **resume automatically** if the app is closed or reopened.
 
 ---
 
@@ -50,7 +50,7 @@ Ensure you have the following installed:
 ### 2. Clone the Repository
 Clone the project repository:
 ```bash
-git clone <repository-url>
+git clone [<Repository Url>](https://github.com/AbhinandhanaPU/Media_Upload.git)
 cd <project-directory>
 ```
 
@@ -84,10 +84,18 @@ Ensure the supabase_flutter package and other dependencies are included in pubsp
 dependencies:
   flutter:
     sdk: flutter
-  supabase_flutter: ^2.0.0
-  file_picker: ^5.2.5
-  path_provider: ^2.0.11
-  video_player: ^2.4.7
+  dotted_border: ^2.1.0
+  file_picker: ^8.0.5
+  get: ^4.6.6
+  fluttertoast: ^8.2.8
+  connectivity_plus: ^6.1.1
+  supabase_flutter: ^2.8.1
+  dio: ^5.7.0
+  flutter_local_notifications: ^18.0.1
+  video_player: ^2.9.2
+  flutter_image_compress: ^2.3.0
+  video_thumbnail: ^0.5.3
+  path_provider: ^2.1.4
 ```
 
 ---
@@ -99,8 +107,7 @@ File Upload Workflow
 1. Select File: Use file_picker to select files from the device.
 
 
-2. Upload to Supabase Storage:
-Example code to upload files:
+2. Upload to Supabase Storage
 
 3. Track Progress: Display a progress bar while uploading.
 
