@@ -48,11 +48,7 @@ Ensure you have the following installed:
 ---
 
 ### 2. Clone the Repository
-Clone the project repository:
-```bash
-git clone [<Repository Url>](https://github.com/AbhinandhanaPU/Media_Upload.git)
-cd <project-directory>
-```
+Clone the project repository
 
 ---
 
@@ -117,7 +113,6 @@ File Upload Workflow
 5. Preview Videos: Use the video_player package to display a video thumbnail before playback.
 
 
-
 ---
 
 ## **Running the App**
@@ -134,7 +129,6 @@ flutter run
 
 ### Contact
 
-For any questions, please contact Abhinandhana at abhinandhanapu81@gmail.com.
-GitHub: Abhinandhana 
+- If you have any questions or feedback, feel free to reach out to me at abhinandhanapu@gmail.com.
 
 ---
