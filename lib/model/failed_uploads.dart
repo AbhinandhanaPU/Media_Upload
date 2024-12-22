@@ -5,13 +5,12 @@ class FailedUpload {
   String filePath;
   String fileSize;
   String errorMessage;
-  RxBool isVisible; // Make this reactive
-
+  RxBool isVisible;
   FailedUpload({
     required this.fileName,
     required this.filePath,
     required this.fileSize,
     required this.errorMessage,
     bool? visible,
-  }) : isVisible = (visible ?? true).obs; // Initialize as observable
+  }) : isVisible = (visible ?? true).obs;
 }

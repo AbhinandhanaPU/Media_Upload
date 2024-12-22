@@ -93,7 +93,6 @@ dependencies:
   dio: ^5.7.0
   flutter_local_notifications: ^18.0.1
   video_player: ^2.9.2
-  flutter_image_compress: ^2.3.0
   video_thumbnail: ^0.5.3
   path_provider: ^2.1.4
 ```

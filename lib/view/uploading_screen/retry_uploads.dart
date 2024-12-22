@@ -16,7 +16,7 @@ class FailedUploadsView extends StatelessWidget {
           final failedFile = controller.failedUploads[index];
 
           return Obx(() => Visibility(
-                visible: failedFile.isVisible.value, // Use .value for RxBool
+                visible: failedFile.isVisible.value,
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(0),
                   leading: const Icon(Icons.error, color: Colors.red),
